@@ -1,5 +1,5 @@
 from torch_geometric.datasets import MD17
-import models
+import gnnff
 import torch
 import torch.nn.functional as F
 from torch.nn import Flatten
@@ -26,7 +26,7 @@ print(force_train.size())
 print(force_train)
 print(z_train)
 
-model = models.GNNFF(10,10,3)
+model = gnnff.GNNFF(10,10,3)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
