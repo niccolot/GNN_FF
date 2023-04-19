@@ -28,8 +28,6 @@ class NodeBlock(torch.nn.Module):
         self.lin_c1 = Linear(hidden_node_channels + hidden_edge_channels,
                              2 * hidden_node_channels)
 
-        # BN was added based on previous studies.
-        # ref: https://github.com/txie-93/cgcnn/blob/master/cgcnn/model.py
         self.bn_c1 = BatchNorm1d(2 * hidden_node_channels)
         self.bn = BatchNorm1d(hidden_node_channels)
 
@@ -62,8 +60,6 @@ class EdgeBlock(torch.nn.Module):
             2 * hidden_edge_channels,
         )
 
-        # BN was added based on previous studies.
-        # ref: https://github.com/txie-93/cgcnn/blob/master/cgcnn/model.py
         self.bn_c2 = BatchNorm1d(2 * hidden_edge_channels)
         self.bn_c3 = BatchNorm1d(2 * hidden_edge_channels)
         self.bn_c2_2 = BatchNorm1d(hidden_edge_channels)
@@ -105,6 +101,7 @@ class EdgeBlock(torch.nn.Module):
             edge_emb[idx_ji],
             edge_emb[idx_kj],
         ], dim=1)
+
         c3 = self.bn_c3(self.lin_c3(c3))
         c3_filter, c3_core = c3.chunk(2, dim=1)
         c3_filter = c3_filter.sigmoid()
@@ -118,15 +115,6 @@ class EdgeBlock(torch.nn.Module):
 
 class GNNFF(torch.nn.Module):
     """
-    The Graph Neural Network Force Field (GNNFF) from the
-    `"Accurate and scalable graph neural network force field and molecular
-    dynamics with direct force architecture"
-    <https://www.nature.com/articles/s41524-021-00543-3>`_ paper.
-    :class:`GNNFF` directly predicts atomic forces from automatically
-    extracted features of the local atomic environment that are
-    translationally-invariant, but rotationally-covariant to the coordinate of
-    the atoms.
-
     Args:
         hidden_node_channels (int): Hidden node embedding size.
         hidden_edge_channels (int): Hidden edge embedding size.
@@ -136,6 +124,10 @@ class GNNFF(torch.nn.Module):
         max_num_neighbors (int, optional): The maximum number of neighbors to
             collect for each node within the :attr:`cutoff` distance.
             (default: :obj:`32`)
+
+    returns:
+        tensor of shape [num_atoms, 3] with the forces on each atom
+        of the molecule or bulk of molecules
     """
     def __init__(
         self,
