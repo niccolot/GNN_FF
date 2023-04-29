@@ -133,12 +133,6 @@ class BOXpbcDataset(Dataset):
         return DATA_SETxyz, DATA_SEThotvec, Output
 
 
-
-
-
-
-
-
     def len(self):
         return self.data.shape[0]
     
