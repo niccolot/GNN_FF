@@ -22,8 +22,8 @@ class BOXpbcDataset(Dataset):
                into raw_dir (downloaded dataset) and processed_dir (processed dataset)
 
                /data_
-                     |- /raw
-                     |- /processed
+                     |- /raw_dir
+                     |- /processed_dir
         """
         #self.filename = filename
         self.test = test
@@ -142,7 +142,7 @@ class BOXpbcDataset(Dataset):
         """
         if self.test:
             data = torch.load(os.path.join(self.processed_dir,
-                                           f'data_{fi}_{idx}.pt'))
+                                           f'data_test_{fi}_{idx}.pt'))
         
         else:
             data = torch.load(os.path.join(self.processed_dir,
