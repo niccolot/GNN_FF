@@ -1,47 +1,49 @@
 from torch_geometric.datasets import MD17
+from torch_geometric.loader import DataLoader
 import gnnff
 import torch
-import torch.nn.functional as F
-from torch.nn import Flatten
 from torcheval.metrics import MeanSquaredError as MSE
+from matplotlib import pyplot as plt
+import time
+
+
+batch_size = 1  
+node_channels = 4
+edge_channels = 50
+layers = 2
+epochs = 3
+lr = 1e-2
+
 
 dataset_train = MD17(root='aspirin_dataset', name='aspirin CCSD', train=True)
 dataset_val = MD17(root='aspirin_dataset', name='aspirin CCSD', train=False)
 
-data_train = dataset_train[0]
-print(data_train)
+train_loader = DataLoader(dataset_train, batch_size=batch_size)
 
-z_train = data_train.z
-pos_train = data_train.pos
-force_train = data_train.force
 
-data_val = dataset_val[0]
-z_val = data_val.z
-pos_val = data_val.pos
-force_val = data_val.force
+model = gnnff.GNNFF(hidden_node_channels=node_channels,
+                    hidden_edge_channels=edge_channels,
+                    num_layers=layers)
 
-print(z_train.size())
-print(pos_train.size())
-print(force_train.size())
-print(force_train)
-print(z_train)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+criterion = torch.nn.MSELoss()
 
-model = gnnff.GNNFF(10,10,3)
-
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+losses = []
 
 model.train()
-for epoch in range(200):
-    optimizer.zero_grad()
-    out = model(z_train,pos_train)
-    loss = F.mse_loss(out, force_train)
-    loss.backward()
-    optimizer.step()
+for epoch in range(epochs):
+    start = time.time()
+    for iter, data in enumerate(train_loader):
+        optimizer.zero_grad()
+        out = model(data.z, data.pos)
+        loss = criterion(out, data.force)
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+    end = time.time()
+    elapsed = end-start
+    print("Epoch: %d done, time: %.1f" %(epoch, elapsed))
 
-
-model.eval()
-pred = model(z_val, pos_val)
-mse = MSE()
-metric = mse.update(pred,force_val)
-metric = mse.compute()
-print(f'Accuracy: {metric:.4f}')
+plt.plot(losses, label='MSE')
+plt.xlabel('steps')
+plt.show()
