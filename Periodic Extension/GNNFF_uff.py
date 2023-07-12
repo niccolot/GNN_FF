@@ -1,5 +1,5 @@
 """
-    GRAPH NEURAL NETWORK CLASS
+    GRAPH NEURAL NETWORK CLASS PERIODIC EXTENSION
 """
 import torch
 from torch import Tensor
