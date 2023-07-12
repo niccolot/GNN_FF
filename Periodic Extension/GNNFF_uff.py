@@ -33,7 +33,7 @@ class NodeBlock(torch.nn.Module):
         self.lin_c1 = Linear(hidden_node_channels + hidden_edge_channels,
                              2 * hidden_node_channels)
 
-        # BN was added based on previous studies.
+        # Batch Normalization was added based on previous studies.
         # ref: https://github.com/txie-93/cgcnn/blob/master/cgcnn/model.py
         self.bn_c1 = BatchNorm1d(2 * hidden_node_channels)
         self.bn = BatchNorm1d(hidden_node_channels)
@@ -65,7 +65,7 @@ class EdgeBlock(torch.nn.Module):
             2 * hidden_edge_channels,
         )
 
-        # BN was added based on previous studies.
+        # Batch Normalization was added based on previous studies.
         # ref: https://github.com/txie-93/cgcnn/blob/master/cgcnn/model.py
         self.bn_c2 = BatchNorm1d(2 * hidden_edge_channels)
         self.bn_c3 = BatchNorm1d(2 * hidden_edge_channels)
@@ -133,16 +133,15 @@ class GNNFF(torch.nn.Module):
         hidden_edge_channels (int): Hidden edge embedding size.
         num_layers (int): Number of message passing blocks.
         cutoff (float, optional): Cutoff distance for interatomic
-            interactions. (default: :obj:`5.0`)
+            interactions it must be comparable to the one used to generate the data (each FF has one). (default: :obj:`10.0`)
         max_num_neighbors (int, optional): The maximum number of neighbors to
             collect for each node within the :attr:`cutoff` distance.
-            (default: :obj:`32`)
+            (default: :obj:`78`)
     """
     def __init__(
         self,
         hidden_node_channels: int,
         hidden_edge_channels: int,
-        #dimensions: tuple, #aggiunto
         num_layers: int,
         cutoff: float = 10.0,
         max_num_neighbors: int = 78,
@@ -151,7 +150,7 @@ class GNNFF(torch.nn.Module):
 
         self.cutoff = cutoff
         self.max_num_neighbors = max_num_neighbors
-        #self.dimensions = dimensions #aggiunto
+
 
 
         self.node_emb = Sequential(
@@ -208,20 +207,14 @@ class GNNFF(torch.nn.Module):
         #unit_vec = (pos[i] - pos[j]) / dist.view(-1, 1)
         #i tre comandi successivi mi devono restiruire le stesse cose che farebbero dist e unit_vec
         dist0 = torch.tensor(distance_pbc(pos1=pos[i],pos2=pos[j], dimensions=dimension))
-        dist = dist0#[0]
+        dist = dist0
         unit_vec = (pos[i] - pos[j]) / dist.view(-1, 1)
 
         # Embedding blocks:
-        print(dist0.size())
-        print(dist.size())
-        print(unit_vec[0])
         node_emb = self.node_emb(z)
         edge_emb = self.edge_emb(dist)
         edge_emb = edge_emb.to(torch.float32) #must be 32float since weigths are so
-        print(node_emb.size())
-        print(edge_emb.size())
-        print(node_emb.dtype)
-        print(edge_emb.dtype)
+
 
 
         # Message passing blocks:
