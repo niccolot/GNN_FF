@@ -1,3 +1,6 @@
+"""
+    GRAPH NEURAL NETWORK CLASS
+"""
 import torch
 from torch import Tensor
 from torch.nn import BatchNorm1d, Embedding, Linear, ModuleList, Sequential
@@ -191,24 +194,29 @@ class GNNFF(torch.nn.Module):
 
 
 
-    def forward(self, z: Tensor, pos: Tensor, dimension: tuple ,
+    def forward(self, z: Tensor, pos: Tensor, dimension ,
                 batch: OptTensor = None) -> Tensor:
         """"""
         edge_index = radius_graph_pbc(pos, r=self.cutoff, bounds=dimension, batch=batch,
                                   max_num_neighbors=self.max_num_neighbors)
-        #edge_index = radius_graph(pos, r=self.cutoff, batch=batch,
-                                  #max_num_neighbors=self.max_num_neighbors)
+
 
         i, j, idx_i, idx_j, idx_k, idx_kj, idx_ji = triplets(
             edge_index, num_nodes=z.size(0))
 
         # Calculate distances and unit vector:
-        #dist = (pos[i] - pos[j]).pow(2).sum(dim=-1).sqrt()
-        #unit_vec = (pos[i] - pos[j]) / dist.view(-1, 1)
-        #i tre comandi successivi mi devono restiruire le stesse cose che farebbero dist e unit_vec
-        dist0 = torch.tensor(distance_pbc(pos1=pos[i],pos2=pos[j], dimensions=dimension))
-        dist = dist0
+        dist = (pos[i] - pos[j]).pow(2).sum(dim=-1).sqrt()
         unit_vec = (pos[i] - pos[j]) / dist.view(-1, 1)
+
+        # The for cycle is necessary in order to fix the direction of all the unit vectors in periodic conditions
+        for (d,ind) in zip(dist.view(-1, 1), range(len(dist.view(-1, 1)))):
+            if d > float(dimension[0]/2):
+                unit_vec[ind] = - unit_vec[ind]
+            else:
+                pass
+        
+        #the distance tensor must be periodic
+        dist = torch.tensor(distance_pbc(pos1=pos[i],pos2=pos[j], dimensions=dimension))
 
         # Embedding blocks:
         node_emb = self.node_emb(z)
