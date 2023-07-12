@@ -5,10 +5,9 @@ import torch
 import torch_geometric
 from torch_geometric.data import Dataset, Data
 import numpy as np
-import os #?
-from itertools import islice
+import os 
 from tqdm import tqdm
-import glob 
+
 
 
 
@@ -17,7 +16,7 @@ import glob
 #-----------------------------------------------
 class LAMMPSDataset(Dataset):
     def __init__(self, root,  test = False, transform=None, pre_transform=None):
-        """
+        r"""
         root = Where the dataset should be stored. This folder is split
                into raw_dir (raw dataset) and processed_dir (processed dataset)
 
@@ -31,12 +30,12 @@ class LAMMPSDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        """ If these files are found in processed_dir, processing is skipped
+        r""" If these files are found in processed_dir, processing is skipped
         """
-        return self.processed_dir+'/tensor_dataset1.pt'
+        return  self.processed_dir+'/tensor_dataset1.pt'
 
     def process(self):
-        """ Run on all file in raw_dir and process them into data file
+        r""" Run on all file in raw_dir and process them into data file
             then convert them in Data object and save in proper dataset
         """
         print('Swag')
@@ -55,6 +54,7 @@ class LAMMPSDataset(Dataset):
             boundy = float(lines[6].split()[0]) -float(lines[6].split()[1])
             boundz = float(lines[7].split()[0]) -float(lines[7].split()[1])
             bound = np.array([boundx,boundy,boundz]) #buond conditions
+            print(bound)
 
             header_rows = 9
             max_index = int(num_lines/(npart+header_rows))
@@ -70,34 +70,28 @@ class LAMMPSDataset(Dataset):
                             )
 
                 self.lst_tensor.append(data)
-            # Because saving a huge python list is rather slow, we collate the list into one huge Data object via torch_geometric.data.InMemoryDataset.collate() before saving . 
+            
             torch.save(self.lst_tensor,os.path.join(self.processed_dir,f'tensor_dataset{i}.pt'))
-            # Because saving a huge python list is rather slow, we collate the list into one huge Data object via torch_geometric.data.InMemoryDataset.collate() before saving . 
+            # Because saving a huge python list is rather slow, it is possible to collate the list into one huge Data object via torch_geometric.data.InMemoryDataset.collate() before saving . 
             #Dat, slices = torch_geometric.data.InMemoryDataset.collate(lst_tensor)
             #torch.save((Dat, slices),os.path.join(self.processed_dir,f'tensor_dataset{i}.pt'))
 
 
     def len(self):
         return len(self.lst_tensor)
-        #return len(glob.glob(self.processed_dir+'/*'))
 
 
     def get(self,fi):
-        """
+        r"""
         Equivalent to __getitem__ in pytorch
         """
-        #if self.test:
-           # data = torch.load(os.path.join(self.processed_dir,
-            #                               f'data_test_{fi}_{idx}.pt'))
-        
-        #else:
         data = torch.load(os.path.join(self.processed_dir,
                                            f'tensor_dataset{fi}.pt'))
         return data
 
 
 def rawtoDataL(lines: list, frame: int,npart: int):
-    """
+    r"""
     rawtoDataL access an open file and select lines for a fixed frame
 
     Parameters
@@ -107,49 +101,50 @@ def rawtoDataL(lines: list, frame: int,npart: int):
         - npart (int): number of particle in the frame
 
         
-    Results
+    Returns
     ---------
         - DATA_SETxyz (tensor):  size=(numeroAtomi, 3), coordinates tensor
         - DATA_SEThotvec (tensor): size=( numeroAtomi, 1),  hot vector tensor for O and H
-        - Output (tensor): size=( numeroAtomi, 3), Force tensor    """
+        - Output (tensor): size=( numeroAtomi, 3), Force tensor    
+    """
+    
     DATA_SETxyz = np.zeros(shape=(npart, 3), dtype='f')
-    #DATA_SEThotvec = np.zeros(shape=(npart, 1), dtype='i')
     DATA_SEThotvec = np.zeros(npart, dtype='i')
     Output = np.zeros(shape=(npart, 3), dtype='f')
     header_rows = 9
     start_row = frame*(npart+header_rows)+header_rows
     end_row = start_row + npart
-    #print(start_row, end_row)
+
 
 
     for (row,i) in zip(lines[start_row:end_row],range(npart)):
-        #print(row,i)
-        #print(int(row.split()[0]))
+
         DATA_SETxyz[i][0] = float(row.split()[1])
         DATA_SETxyz[i][1] = float(row.split()[2])
         DATA_SETxyz[i][2] = float(row.split()[3])
         Output[i][0] = float(row.split()[4])
         Output[i][0] = float(row.split()[5])
         Output[i][0] = float(row.split()[6])
-        #DATA_SEThotvec[i] = float(row.split()[0])
+        
         DATA_SEThotvec[i] = int(float(row.split()[0]))
 
     DATA_SETxyz = torch.from_numpy(DATA_SETxyz)
     DATA_SEThotvec = torch.from_numpy(DATA_SEThotvec)
     Output = torch.from_numpy(Output)
 
+
     return DATA_SETxyz, DATA_SEThotvec, Output
 
 
 #-----------------------------------------------
 if __name__=='__main__':
-    DATA_PATH= '/home/lorenz_gauge/Documenti/Lorenzo/Esami_Magistrale/Computing/Progetto_Esame/data/'
+    DATA_PATH= '/home/castelli/Documents/GNNFF/Progetto_Esame2/data'
 
 
 
     dataset = LAMMPSDataset(root=DATA_PATH)
 
-    swagData = dataset.get(2)[0]
+    swagData = dataset.get(1)[0]
     print(swagData.x[:1])
     print(swagData.z[:1])
     print(swagData.bounds)
