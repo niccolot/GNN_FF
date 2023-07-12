@@ -119,7 +119,7 @@ def radius_graph(x,
 
 def radius_periodic(x, y, r,bounds, batch_x=None, batch_y=None, max_num_neighbors=32):
     r"""Finds for each element in :obj:`y` all points in :obj:`x` within
-    distance :obj:`r`.
+    distance :obj:`r` in a periodic box.
 
     Args:
         x (Tensor): Node feature matrix
@@ -127,8 +127,9 @@ def radius_periodic(x, y, r,bounds, batch_x=None, batch_y=None, max_num_neighbor
         y (Tensor): Node feature matrix
             :math:`\mathbf{Y} \in \mathbb{R}^{M \times F}`.
         r (float): The radius.
-        bounds (array): array where each element is the lenght of the periodic
-            box (its dimention must match the box one)
+        bounds (list): Size of the periodic box along each spatial dimension.  A
+            negative or zero size for dimension k means that space is not
+            periodic along k.
         batch_x (LongTensor, optional): Batch vector
             :math:`\mathbf{b} \in {\{ 0, \ldots, B-1\}}^N`, which assigns each
             node to a specific example. (default: :obj:`None`)
@@ -143,7 +144,9 @@ def radius_periodic(x, y, r,bounds, batch_x=None, batch_y=None, max_num_neighbor
     .. testsetup::
 
         import torch
+        import numpy as np
         from torch_cluster import radius
+        from Radius import radius_periodic
 
     .. testcode::
 
@@ -151,6 +154,7 @@ def radius_periodic(x, y, r,bounds, batch_x=None, batch_y=None, max_num_neighbor
         >>> x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
         >>> batch_x = torch.tensor([0, 0, 0, 0])
         >>> y = torch.Tensor([[-1, 0], [1, 0]])
+        >>> bounds = np.array([2,2])
         >>> batch_y = torch.tensor([0, 0])
         >>> assign_index = radius_periodic(x, y, 1.5, bounds, batch_x, batch_y)
     """
@@ -172,10 +176,7 @@ def radius_periodic(x, y, r,bounds, batch_x=None, batch_y=None, max_num_neighbor
     assert x.size(0) == batch_x.size(0)
     assert y.size(0) == batch_y.size(0)
 
-    x = torch.cat([x, 2 * r * batch_x.view(-1, 1).to(x.dtype)], dim=-1)
-    y = torch.cat([y, 2 * r * batch_y.view(-1, 1).to(y.dtype)], dim=-1)
-
-    tree = PeriodicCKDTree(bounds,x.detach().numpy()) #lui è il comando per il tree periodico
+    tree = PeriodicCKDTree(bounds,x.detach().numpy()) 
     _, col = tree.query(
         y.detach().numpy(), k=max_num_neighbors, distance_upper_bound=r + 1e-8)
     col = [torch.from_numpy(c).to(torch.long) for c in col]
@@ -195,14 +196,15 @@ def radius_graph_pbc(x,
                  loop=False,
                  max_num_neighbors=32,
                  flow='source_to_target'):
-    r"""Computes graph edges to all points within a given distance.
+    r"""Computes graph edges to all points within a given distance in a periodic box.
 
     Args:
         x (Tensor): Node feature matrix
             :math:`\mathbf{X} \in \mathbb{R}^{N \times F}`.
         r (float): The radius.
-        bounds (array): array where each element is the lenght of the periodic
-            box (its dimention must match the box one)
+        bounds (list): Size of the periodic box along each spatial dimension.  A
+            negative or zero size for dimension k means that space is not
+            periodic along k.
         batch (LongTensor, optional): Batch vector
             :math:`\mathbf{b} \in {\{ 0, \ldots, B-1\}}^N`, which assigns each
             node to a specific example. (default: :obj:`None`)
@@ -225,13 +227,11 @@ def radius_graph_pbc(x,
 
         >>> x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
         >>> batch = torch.tensor([0, 0, 0, 0])
-        >>> edge_index = radius_graph(x, r=1.5, batch=batch, loop=False)
+        >>> bounds = [2,2]
+        >>> edge_index = radius_graph(x, r=1.5, bounds, batch=batch, loop=False)
     """
-    # Added since the bounds must be an array with dimention 4 since positions have one extra coordinate
-    
     bounds = np.array(bounds)
-    bounds = np.append(bounds, bounds[0][0])
-    print(np.shape(bounds))    
+
     assert flow in ['source_to_target', 'target_to_source']
     row, col = radius_periodic(x, x, r, bounds, batch, batch, max_num_neighbors + 1)
     row, col = (col, row) if flow == 'source_to_target' else (row, col)
@@ -241,7 +241,7 @@ def radius_graph_pbc(x,
     return torch.stack([row, col], dim=0)
 
 def distance_pbc(pos1, pos2, dimensions):
-    """
+    r"""
     This function takes as input two tensor :obj:'pos1' and :obj:'pos2' and gives a tensor that represent the periodic distance between
     the two input tesors
 
@@ -253,7 +253,7 @@ def distance_pbc(pos1, pos2, dimensions):
             the position of the second node
         - dimensions (tuple): a tuple containg the length of the box in each dimension
     
-    Results
+    Returns
     ---------
         - distance (Tensor)
     """
@@ -262,4 +262,3 @@ def distance_pbc(pos1, pos2, dimensions):
     delta = np.abs(pos1 - pos2)
     delta = np.where(delta > 0.5 * np.array(dimensions), delta - dimensions, delta)
     return np.sqrt((delta ** 2).sum(axis=-1))
-
