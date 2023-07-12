@@ -52,9 +52,9 @@ for epoch in range(epochs):
     print("mean_train_loss: %.2f, mean_val_loss: %.2f" % (mean_train_loss, mean_val_loss))
 
 
-plt.plot(losses, label='Train MSE')
-plt.plot(val_losses, label='Validation MSE')
-plt.xlabel('steps')
-plt.ylabel('MSE')
-plt.legend()
-plt.show()
+#plt.plot(losses, label='Train MSE')
+#plt.plot(val_losses, label='Validation MSE')
+#plt.xlabel('steps')
+#plt.ylabel('MSE')
+#plt.legend()
+#plt.show()
